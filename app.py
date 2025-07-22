@@ -32,12 +32,18 @@ def ocr_image(img: Image.Image):
         return ""
 
 def ocr_pdf_file(file):
-    images = convert_from_bytes(file.read())
+    try:
+        images = convert_from_bytes(file.read())
+    except Exception as e:
+        print("Error al convertir PDF a imágenes:", e)
+        return "Error: El archivo no es un PDF válido o está dañado."
+
     full_text = ""
     for img in images:
         text = ocr_image(img)
         full_text += text + "\n--- PAGE BREAK ---\n"
     return full_text.strip()
+
 
 @app.route('/ocr-header', methods=['POST'])
 def ocr_header():
