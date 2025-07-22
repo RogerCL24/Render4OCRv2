@@ -5,7 +5,12 @@ import io
 app = Flask(__name__)
 
 @app.route('/extract-text', methods=['POST'])
-def extract_text():
+def extract_text
+    file = request.files.get("file")
+    print("→ filename:", file.filename)
+    print("→ content‑type:", file.mimetype)
+    print("→ size bytes:", file.content_length)   # a veces es None
+
     if 'file' not in request.files:
         return jsonify({"error": "No file provided"}), 400
 
