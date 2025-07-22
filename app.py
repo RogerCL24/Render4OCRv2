@@ -39,3 +39,8 @@ def ocr_header():
         "header_text": first_line,
         "full_text": full_text
     })
+
+
+@app.route('/ping')
+def ping():
+    return "pong"
