@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
-from PyPDF2 import PdfReader, PdfReadError
+from PyPDF2 import PdfReader
+from PyPDF2.errors import PdfReadError
 import io
 
 app = Flask(__name__)
@@ -12,16 +13,13 @@ def extract_text():
         return jsonify({"error": "No file uploaded"}), 400
 
     try:
-        # Verifica propiedades del archivo recibido
         print("→ filename:", file.filename)
         print("→ content-type:", file.mimetype)
         print("→ file size (bytes):", file.content_length)
 
-        # Lee el contenido en memoria
         pdf_bytes = file.read()
         reader = PdfReader(io.BytesIO(pdf_bytes))
 
-        # Extrae texto de las dos primeras páginas
         text = ""
         for i in range(min(2, len(reader.pages))):
             page = reader.pages[i]
@@ -39,7 +37,6 @@ def extract_text():
     except Exception as e:
         return jsonify({"error": f"Error interno: {str(e)}"}), 500
 
-# Ruta base opcional para probar salud del servidor
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({"message": "Extractor de texto activo"}), 200
