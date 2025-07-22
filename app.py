@@ -1,27 +1,48 @@
 from flask import Flask, request, jsonify
-from PyPDF2 import PdfReader
+from PyPDF2 import PdfReader, PdfReadError
 import io
 
 app = Flask(__name__)
 
 @app.route('/extract-text', methods=['POST'])
-def extract_text
-    file = request.files.get("file")
-    print("→ filename:", file.filename)
-    print("→ content‑type:", file.mimetype)
-    print("→ size bytes:", file.content_length)   # a veces es None
+def extract_text():
+    file = request.files.get('file')
+    
+    if not file:
+        return jsonify({"error": "No file uploaded"}), 400
 
-    if 'file' not in request.files:
-        return jsonify({"error": "No file provided"}), 400
+    try:
+        # Verifica propiedades del archivo recibido
+        print("→ filename:", file.filename)
+        print("→ content-type:", file.mimetype)
+        print("→ file size (bytes):", file.content_length)
 
-    file = request.files['file']
-    reader = PdfReader(io.BytesIO(file.read()))
-    text = ""
+        # Lee el contenido en memoria
+        pdf_bytes = file.read()
+        reader = PdfReader(io.BytesIO(pdf_bytes))
 
-    for i in range(min(2, len(reader.pages))):
-        text += reader.pages[i].extract_text() + "\n"
+        # Extrae texto de las dos primeras páginas
+        text = ""
+        for i in range(min(2, len(reader.pages))):
+            page = reader.pages[i]
+            extracted = page.extract_text()
+            if extracted:
+                text += extracted + "\n"
 
-    return jsonify({"text": text.strip()}), 200
+        return jsonify({
+            "text": text.strip()
+        })
+
+    except PdfReadError as e:
+        return jsonify({"error": f"PyPDF2 error: {str(e)}"}), 422
+
+    except Exception as e:
+        return jsonify({"error": f"Error interno: {str(e)}"}), 500
+
+# Ruta base opcional para probar salud del servidor
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({"message": "Extractor de texto activo"}), 200
 
 if __name__ == '__main__':
     app.run(debug=True)
