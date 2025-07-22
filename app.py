@@ -1,38 +1,41 @@
+
+
 from flask import Flask, request, jsonify
-from PyPDF2 import PdfReader
-from PyPDF2.errors import PdfReadError
-import io, requests
+import requests
+import os
 
 app = Flask(__name__)
 
-@app.route('/extract-text', methods=['POST'])
-def extract_text():
-    data = request.get_json(silent=True)
-    if not data or 'pdf_url' not in data:
-        return jsonify({"error": "Missing 'pdf_url' in JSON payload"}), 400
+OCR_SPACE_API_KEY = os.getenv("OCR_SPACE_API_KEY", "helloworld")  # valor por defecto
 
-    pdf_url = data['pdf_url']
-    print(f"→ Descargando PDF desde: {pdf_url}")
+
+def ocr_with_ocr_space(file):
+    url = "https://api.ocr.space/parse/image"
+    payload = {
+        "apikey": OCR_SPACE_API_KEY,
+        "language": "eng",
+        "isOverlayRequired": False,
+        "scale": True,
+        "OCREngine": 2
+    }
+    files = {"filename": (file.filename, file.stream, file.mimetype)}
+    response = requests.post(url, data=payload, files=files)
+    result = response.json()
 
     try:
-        response = requests.get(pdf_url)
-        response.raise_for_status()
+        return result["ParsedResults"][0]["ParsedText"].strip()
+    except Exception:
+        return "Error: No se pudo leer texto"
 
-        reader = PdfReader(io.BytesIO(response.content))
-        text = ""
-        for i in range(min(2, len(reader.pages))):
-            page = reader.pages[i]
-            extracted = page.extract_text()
-            if extracted:
-                text += extracted + "\n"
+@app.route('/ocr-header', methods=['POST'])
+def ocr_header():
+    file = request.files.get('file')
+    if not file:
+        return jsonify({"error": "No file uploaded"}), 400
 
-        return jsonify({"text": text.strip()}), 200
-
-    except PdfReadError as e:
-        return jsonify({"error": f"PyPDF2 error: {str(e)}"}), 422
-    except Exception as e:
-        return jsonify({"error": f"Error interno: {str(e)}"}), 500
-
-@app.route("/", methods=["GET"])
-def home():
-    return jsonify({"message": "Extractor de texto por URL activo"}), 200
+    full_text = ocr_with_ocr_space(file)
+    first_line = full_text.strip().splitlines()[0] if full_text else ""
+    return jsonify({
+        "header_text": first_line,
+        "full_text": full_text
+    })
